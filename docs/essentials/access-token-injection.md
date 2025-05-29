@@ -196,7 +196,7 @@ For this feature to work, your MCP server tools should accept an `access_token` 
 
 ```python
 # Example MCP server tool
-@tool
+@mcp.tool()
 def create_note(content: str, access_token: str = None):
     """Create a note with the given content.
 
