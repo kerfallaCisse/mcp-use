@@ -35,13 +35,14 @@
 </p>
 🌐 MCP-Use is the open source way to connect **any LLM to any MCP server** and build custom agents that have tool access, without using closed source or application clients.
 
-💬 Get started quickly - chat with your servers on our <b>hosted version</b>! <b>[Try mcp-use chat *(beta)* ](https://chat.mcp-use.io)</b>.
+💬 Get started quickly - chat with your servers on our `<b>`hosted version`</b>`! `<b>`[Try mcp-use chat _(beta)_ ](https://chat.mcp-use.io)`</b>`.
 
 💡 Let developers easily connect any LLM to tools like web browsing, file operations, and more.
 
 # Features
 
 ## ✨ Key Features
+
 <table>
   <tr>
     <th width="400">Feature</th>
@@ -93,12 +94,19 @@ With pip:
 pip install mcp-use
 ```
 
-Or install from source:
+**Or install from source :**
 
 ```bash
 git clone https://github.com/pietrozullo/mcp-use.git
 cd mcp-use
-pip install -e .
+pip install -e . # with pip
+```
+
+**You can also install with uv instead of pip after cloning the repo**
+
+```bash
+uv venv
+uv sync
 ```
 
 ### Installing LangChain Providers
@@ -112,6 +120,7 @@ pip install langchain-openai
 # For Anthropic
 pip install langchain-anthropic
 ```
+
 For other providers, check the [LangChain chat models documentation](https://python.langchain.com/docs/integrations/chat/) and add your API keys for the provider you want to use to your `.env` file.
 
 ```bash
