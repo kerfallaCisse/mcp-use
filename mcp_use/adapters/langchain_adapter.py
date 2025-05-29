@@ -28,16 +28,16 @@ from .base import BaseAdapter
 class LangChainAdapter(BaseAdapter):
     """Adapter for converting MCP tools to LangChain tools."""
 
-    def __init__(self, disallowed_tools: list[str] | None = None, access_token: str | None = None) -> None:
+    def __init__(self, disallowed_tools: list[str] | None = None, payload: dict | None = None) -> None:
         """Initialize a new LangChain adapter.
 
         Args:
             disallowed_tools: list of tool names that should not be available.
-            access_token: optional access token to inject into tool calls.
+            payload: optional payload to inject into tool calls.
         """
         super().__init__(disallowed_tools)
         self._connector_tool_map: dict[BaseConnector, list[BaseTool]] = {}
-        self.access_token = access_token
+        self.payload = payload
 
     def fix_schema(self, schema: dict) -> dict:
         """Convert JSON Schema 'type': ['string', 'null'] to 'anyOf' format.
@@ -155,19 +155,19 @@ class LangChainAdapter(BaseAdapter):
 
                 Returns:
                     The result of the tool execution.                Raises:
-                    ToolException: If tool execution fails.
-                """
+                    ToolException: If tool execution fails.                """
                 logger.debug(
                     f'MCP tool: "{self.name}" received input: {kwargs}')
 
                 try:
-                    # Inject access token if available
-                    if adapter_self.access_token:
-                        # Add access_token to the arguments if not already present
-                        if "access_token" not in kwargs:
-                            kwargs["access_token"] = adapter_self.access_token
-                            logger.debug(
-                                f'Injected access token for tool: "{self.name}"')
+                    # Inject payload if available
+                    if adapter_self.payload:
+                        # Add payload data to the arguments if not already present
+                        for key, value in adapter_self.payload.items():
+                            if key not in kwargs:
+                                kwargs[key] = value
+                                logger.debug(
+                                    f'Injected payload key "{key}" for tool: "{self.name}"')
 
                     tool_result: CallToolResult = await self.tool_connector.call_tool(
                         self.name, kwargs

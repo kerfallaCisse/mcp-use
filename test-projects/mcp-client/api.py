@@ -43,7 +43,7 @@ app.add_middleware(
 
 class QueryRequest(BaseModel):
     query: str
-    access_token: str
+    payload: Dict[str, Any] = {}
 
 
 @app.post("/query")
@@ -53,7 +53,7 @@ async def process_query(request: QueryRequest):
         # Pass the access token to the process_query method
         result = await app.state.client.process_query(
             query=request.query,
-            access_token=request.access_token
+            payload=request.payload
         )
         print(f"Result: {result}")
         return {"result": result}

@@ -1,28 +1,30 @@
-# Access Token Injection
+# Payload Injection
 
-This document explains how to use the access token injection feature in mcp-use, which allows you to securely inject access tokens into tool calls without exposing them to the LLM.
+This document explains how to use the payload injection feature in mcp-use, which allows you to securely inject payload data into tool calls without exposing them to the LLM.
 
 ## Overview
 
-The access token injection feature enables you to:
+The payload injection feature enables you to:
 
-- **Intercept tool calls**: Automatically inject access tokens before tools are executed
-- **Keep tokens hidden**: Access tokens are never visible to the LLM in prompts or responses
-- **Secure authentication**: Tools receive the necessary authentication tokens for API calls
-- **Flexible configuration**: Set tokens at initialization or dynamically per request
+- **Intercept tool calls**: Automatically inject payload data before tools are executed
+- **Keep data hidden**: Payload data is never visible to the LLM in prompts or responses
+- **Secure authentication**: Tools receive necessary authentication tokens and context data
+- **Flexible configuration**: Set payload at initialization or dynamically per request
+- **Multiple data types**: Inject access tokens, user IDs, session data, and more
 
 ## Use Cases
 
 This feature is particularly useful for:
 
-- **Web applications**: Frontend sends access tokens with queries for authenticated API calls
-- **Multi-tenant systems**: Different users have different access tokens for the same tools
-- **API integrations**: Tools need authentication tokens to access external services
-- **Security compliance**: Keeping sensitive tokens out of LLM context and logs
+- **Web applications**: Frontend sends authentication and context data with queries
+- **Multi-tenant systems**: Different users have different access tokens and user data
+- **API integrations**: Tools need authentication tokens and metadata for external services
+- **Security compliance**: Keeping sensitive data out of LLM context and logs
+- **User context**: Providing user-specific information to tools without exposing it to the LLM
 
 ## Basic Usage
 
-### Setting Access Token at Initialization
+### Setting Payload at Initialization
 
 ```python
 import asyncio

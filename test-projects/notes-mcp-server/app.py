@@ -35,25 +35,40 @@ def ensure_file():
 
 
 @mcp.tool()
-def add_note(message: str, access_token: Optional[str] = None) -> str:
+def add_note(
+    message: str,
+    user_id: Optional[str] = None,
+) -> str:
     """
     Add a note to the sticky notes file.
 
     Args:
         message: str: The message to add to the sticky note
-        access_token: Optional[str]: Authentication token (automatically provided)
+        user_id: Optional[str]: User ID (automatically provided)
 
     Returns:
       str: Confirmation message indicating that the note has been added.
     """
     ensure_file()
-    if access_token is None:
-        logging.info(
-            "No access token provided. Note will be added without token.")
+
+    # Log payload information (be careful with sensitive data in production)
+    payload_info = []
+
+    if user_id:
+        payload_info.append(f"User ID: {user_id}")
+
+    if payload_info:
+        logging.info(f"Payload received: {', '.join(payload_info)}")
     else:
-        logging.info(f"Using access token: {access_token}")
+        logging.info(
+            "No payload provided. Note will be added without authentication.")
+
     with open(NOTES_FILE, "a", encoding="utf-8") as f:
-        f.write(message + f"\nAccess token: {access_token}\n\n")
+        f.write(f"Message: {message}\n")
+        if user_id:
+            f.write(f"User ID: {user_id}\n")
+        f.write("\n")
+
     return "Note added successfully!"
 
 

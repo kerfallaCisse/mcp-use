@@ -54,7 +54,7 @@ class MCPAgent:
         disallowed_tools: list[str] | None = None,
         use_server_manager: bool = False,
         verbose: bool = False,
-        access_token: str | None = None,  # Add access token parameter
+        payload: dict | None = None,  # Add payload parameter
     ):
         """Initialize a new MCPAgent instance.
 
@@ -70,7 +70,7 @@ class MCPAgent:
             additional_instructions: Extra instructions to append to the system prompt.
             disallowed_tools: List of tool names that should not be available to the agent.
             use_server_manager: Whether to use server manager mode instead of exposing all tools.
-            access_token: Access token to inject into tool calls when available.
+            payload: Payload dictionary to inject into tool calls when available.
         """
         self.llm = llm
         self.client = client
@@ -83,7 +83,7 @@ class MCPAgent:
         self.disallowed_tools = disallowed_tools or []
         self.use_server_manager = use_server_manager
         self.verbose = verbose
-        self.access_token = access_token  # Store access token
+        self.payload = payload  # Store payload
         # System prompt configuration
         self.system_prompt = system_prompt  # User-provided full prompt override
         # User can provide a template override, otherwise use the imported default
@@ -96,7 +96,7 @@ class MCPAgent:
 
         # Create the adapter for tool conversion
         self.adapter = LangChainAdapter(
-            disallowed_tools=self.disallowed_tools, access_token=self.access_token)
+            disallowed_tools=self.disallowed_tools, payload=self.payload)
 
         # Initialize server manager if requested
         self.server_manager = None
@@ -104,29 +104,28 @@ class MCPAgent:
             if not self.client:
                 raise ValueError(
                     "Client must be provided when using server manager")
-            self.server_manager = ServerManager(self.client, self.adapter)
-
-        # State tracking
+            self.server_manager = ServerManager(
+                self.client, self.adapter)        # State tracking
         self._agent_executor: AgentExecutor | None = None
         self._system_message: SystemMessage | None = None
 
-    def set_access_token(self, access_token: str | None) -> None:
-        """Set or update the access token for tool calls.
+    def set_payload(self, payload: dict | None) -> None:
+        """Set or update the payload for tool calls.
 
         Args:
-            access_token: The access token to inject into tool calls, or None to remove it.
+            payload: The payload to inject into tool calls, or None to remove it.
         """
-        self.access_token = access_token
+        self.payload = payload
         if self.adapter:
-            self.adapter.access_token = access_token
+            self.adapter.payload = payload
 
-    def get_access_token(self) -> str | None:
-        """Get the current access token.
+    def get_payload(self) -> dict | None:
+        """Get the current payload.
 
         Returns:
-            The current access token, or None if not set.
+            The current payload, or None if not set.
         """
-        return self.access_token
+        return self.payload
 
     async def initialize(self) -> None:
         """Initialize the MCP client and agent."""
@@ -422,16 +421,14 @@ class MCPAgent:
         max_steps: int | None = None,
         manage_connector: bool = True,
         external_history: list[BaseMessage] | None = None,
-        access_token: str | None = None,
+        payload: dict | None = None,
     ) -> str:
         """Run a query using the MCP tools with unified step-by-step execution.
 
         This method handles connecting to the MCP server, initializing the agent,
-        running the query, and then cleaning up the connection.
-
-        Args:
+        running the query, and then cleaning up the connection.        Args:
             query: The query to run.
-            access_token: Optional access token to inject into tool calls for this run.
+            payload: Optional payload to inject into tool calls for this run.
             max_steps: Optional maximum number of steps to take.
             manage_connector: Whether to handle the connector lifecycle internally.
                 If True, this method will connect, initialize, and disconnect from
@@ -445,11 +442,10 @@ class MCPAgent:
         """
         result = ""
         initialized_here = False
-
         try:
-            # Set access token if provided for this run
-            if access_token is not None:
-                self.set_access_token(access_token)
+            # Set payload if provided for this run
+            if payload is not None:
+                self.set_payload(payload)
 
             # Initialize if needed
             if manage_connector and not self._initialized:
