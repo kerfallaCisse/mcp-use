@@ -28,14 +28,16 @@ from .base import BaseAdapter
 class LangChainAdapter(BaseAdapter):
     """Adapter for converting MCP tools to LangChain tools."""
 
-    def __init__(self, disallowed_tools: list[str] | None = None) -> None:
+    def __init__(self, disallowed_tools: list[str] | None = None, access_token: str | None = None) -> None:
         """Initialize a new LangChain adapter.
 
         Args:
             disallowed_tools: list of tool names that should not be available.
+            access_token: optional access token to inject into tool calls.
         """
         super().__init__(disallowed_tools)
         self._connector_tool_map: dict[BaseConnector, list[BaseTool]] = {}
+        self.access_token = access_token
 
     def fix_schema(self, schema: dict) -> dict:
         """Convert JSON Schema 'type': ['string', 'null'] to 'anyOf' format.
@@ -68,7 +70,8 @@ class LangChainAdapter(BaseAdapter):
                         or contained unexpected content types.
         """
         if tool_result.isError:
-            raise ToolException(f"Tool execution failed: {tool_result.content}")
+            raise ToolException(
+                f"Tool execution failed: {tool_result.content}")
 
         if not tool_result.content:
             raise ToolException("Tool execution returned no content")
@@ -94,9 +97,11 @@ class LangChainAdapter(BaseAdapter):
                             else str(resource.blob)
                         )
                     else:
-                        raise ToolException(f"Unexpected resource type: {resource.type}")
+                        raise ToolException(
+                            f"Unexpected resource type: {resource.type}")
                 case _:
-                    raise ToolException(f"Unexpected content type: {item.type}")
+                    raise ToolException(
+                        f"Unexpected content type: {item.type}")
 
         return decoded_result
 
@@ -122,9 +127,11 @@ class LangChainAdapter(BaseAdapter):
             description: str = mcp_tool.description or ""
             # Convert JSON schema to Pydantic model for argument validation
             args_schema: type[BaseModel] = jsonschema_to_pydantic(
-                adapter_self.fix_schema(mcp_tool.inputSchema)  # Apply schema conversion
+                # Apply schema conversion
+                adapter_self.fix_schema(mcp_tool.inputSchema)
             )
-            tool_connector: BaseConnector = connector  # Renamed variable to avoid name conflict
+            # Renamed variable to avoid name conflict
+            tool_connector: BaseConnector = connector
             handle_tool_error: bool = True
 
             def __repr__(self) -> str:
@@ -137,7 +144,8 @@ class LangChainAdapter(BaseAdapter):
                     NotImplementedError: Always raises this error because MCP tools
                         only support async operations.
                 """
-                raise NotImplementedError("MCP tools only support async operations")
+                raise NotImplementedError(
+                    "MCP tools only support async operations")
 
             async def _arun(self, **kwargs: Any) -> Any:
                 """Asynchronously execute the tool with given arguments.
@@ -146,14 +154,21 @@ class LangChainAdapter(BaseAdapter):
                     kwargs: The arguments to pass to the tool.
 
                 Returns:
-                    The result of the tool execution.
-
-                Raises:
+                    The result of the tool execution.                Raises:
                     ToolException: If tool execution fails.
                 """
-                logger.debug(f'MCP tool: "{self.name}" received input: {kwargs}')
+                logger.debug(
+                    f'MCP tool: "{self.name}" received input: {kwargs}')
 
                 try:
+                    # Inject access token if available
+                    if adapter_self.access_token:
+                        # Add access_token to the arguments if not already present
+                        if "access_token" not in kwargs:
+                            kwargs["access_token"] = adapter_self.access_token
+                            logger.debug(
+                                f'Injected access token for tool: "{self.name}"')
+
                     tool_result: CallToolResult = await self.tool_connector.call_tool(
                         self.name, kwargs
                     )
@@ -183,7 +198,8 @@ class LangChainAdapter(BaseAdapter):
             return re.sub(r"[^A-Za-z0-9_]+", "_", name).lower().strip("_")
 
         class ResourceTool(BaseTool):
-            name: str = _sanitize(mcp_resource.name or f"resource_{mcp_resource.uri}")
+            name: str = _sanitize(
+                mcp_resource.name or f"resource_{mcp_resource.uri}")
             description: str = (
                 mcp_resource.description
                 or f"Return the content of the resource located at URI {mcp_resource.uri}."
@@ -193,7 +209,8 @@ class LangChainAdapter(BaseAdapter):
             handle_tool_error: bool = True
 
             def _run(self, **kwargs: Any) -> NoReturn:
-                raise NotImplementedError("Resource tools only support async operations")
+                raise NotImplementedError(
+                    "Resource tools only support async operations")
 
             async def _arun(self, **kwargs: Any) -> Any:
                 logger.debug(f'Resource tool: "{self.name}" called')
@@ -259,10 +276,12 @@ class LangChainAdapter(BaseAdapter):
             handle_tool_error: bool = True
 
             def _run(self, **kwargs: Any) -> NoReturn:
-                raise NotImplementedError("Prompt tools only support async operations")
+                raise NotImplementedError(
+                    "Prompt tools only support async operations")
 
             async def _arun(self, **kwargs: Any) -> Any:
-                logger.debug(f'Prompt tool: "{self.name}" called with args: {kwargs}')
+                logger.debug(
+                    f'Prompt tool: "{self.name}" called with args: {kwargs}')
                 try:
                     result = await self.tool_connector.get_prompt(self.name, kwargs)
                     return result.messages

@@ -48,11 +48,13 @@ class MCPAgent:
         auto_initialize: bool = False,
         memory_enabled: bool = True,
         system_prompt: str | None = None,
-        system_prompt_template: str | None = None,  # User can still override the template
+        # User can still override the template
+        system_prompt_template: str | None = None,
         additional_instructions: str | None = None,
         disallowed_tools: list[str] | None = None,
         use_server_manager: bool = False,
         verbose: bool = False,
+        access_token: str | None = None,  # Add access token parameter
     ):
         """Initialize a new MCPAgent instance.
 
@@ -68,6 +70,7 @@ class MCPAgent:
             additional_instructions: Extra instructions to append to the system prompt.
             disallowed_tools: List of tool names that should not be available to the agent.
             use_server_manager: Whether to use server manager mode instead of exposing all tools.
+            access_token: Access token to inject into tool calls when available.
         """
         self.llm = llm
         self.client = client
@@ -80,6 +83,7 @@ class MCPAgent:
         self.disallowed_tools = disallowed_tools or []
         self.use_server_manager = use_server_manager
         self.verbose = verbose
+        self.access_token = access_token  # Store access token
         # System prompt configuration
         self.system_prompt = system_prompt  # User-provided full prompt override
         # User can provide a template override, otherwise use the imported default
@@ -91,18 +95,38 @@ class MCPAgent:
             raise ValueError("Either client or connector must be provided")
 
         # Create the adapter for tool conversion
-        self.adapter = LangChainAdapter(disallowed_tools=self.disallowed_tools)
+        self.adapter = LangChainAdapter(
+            disallowed_tools=self.disallowed_tools, access_token=self.access_token)
 
         # Initialize server manager if requested
         self.server_manager = None
         if self.use_server_manager:
             if not self.client:
-                raise ValueError("Client must be provided when using server manager")
+                raise ValueError(
+                    "Client must be provided when using server manager")
             self.server_manager = ServerManager(self.client, self.adapter)
 
         # State tracking
         self._agent_executor: AgentExecutor | None = None
         self._system_message: SystemMessage | None = None
+
+    def set_access_token(self, access_token: str | None) -> None:
+        """Set or update the access token for tool calls.
+
+        Args:
+            access_token: The access token to inject into tool calls, or None to remove it.
+        """
+        self.access_token = access_token
+        if self.adapter:
+            self.adapter.access_token = access_token
+
+    def get_access_token(self) -> str | None:
+        """Get the current access token.
+
+        Returns:
+            The current access token, or None if not set.
+        """
+        return self.access_token
 
     async def initialize(self) -> None:
         """Initialize the MCP client and agent."""
@@ -128,29 +152,35 @@ class MCPAgent:
 
                 # If no active sessions exist, create new ones
                 if not self._sessions:
-                    logger.info("🔄 No active sessions found, creating new ones...")
+                    logger.info(
+                        "🔄 No active sessions found, creating new ones...")
                     self._sessions = await self.client.create_all_sessions()
-                    logger.info(f"✅ Created {len(self._sessions)} new sessions")
+                    logger.info(
+                        f"✅ Created {len(self._sessions)} new sessions")
 
                 # Create LangChain tools directly from the client using the adapter
                 self._tools = await self.adapter.create_tools(self.client)
-                logger.info(f"🛠️ Created {len(self._tools)} LangChain tools from client")
+                logger.info(
+                    f"🛠️ Created {len(self._tools)} LangChain tools from client")
             else:
                 # Using direct connector - only establish connection
                 # LangChainAdapter will handle initialization
                 connectors_to_use = self.connectors
-                logger.info(f"🔗 Connecting to {len(connectors_to_use)} direct connectors...")
+                logger.info(
+                    f"🔗 Connecting to {len(connectors_to_use)} direct connectors...")
                 for connector in connectors_to_use:
                     if not hasattr(connector, "client") or connector.client is None:
                         await connector.connect()
 
                 # Create LangChain tools using the adapter with connectors
                 self._tools = await self.adapter._create_tools_from_connectors(connectors_to_use)
-                logger.info(f"🛠️ Created {len(self._tools)} LangChain tools from connectors")
+                logger.info(
+                    f"🛠️ Created {len(self._tools)} LangChain tools from connectors")
 
             # Get all tools for system message generation
             all_tools = self._tools
-            logger.info(f"🧰 Found {len(all_tools)} tools across all connectors")
+            logger.info(
+                f"🧰 Found {len(all_tools)} tools across all connectors")
 
             # Create the system message based on available tools
             await self._create_system_message_from_tools(all_tools)
@@ -183,7 +213,8 @@ class MCPAgent:
             history_without_system = [
                 msg for msg in self._conversation_history if not isinstance(msg, SystemMessage)
             ]
-            self._conversation_history = [self._system_message] + history_without_system
+            self._conversation_history = [
+                self._system_message] + history_without_system
 
     def _create_agent(self) -> AgentExecutor:
         """Create the LangChain agent with the configured system message.
@@ -210,13 +241,15 @@ class MCPAgent:
         logger.info(f"🧠 Agent ready with tools: {', '.join(tool_names)}")
 
         # Use the standard create_tool_calling_agent
-        agent = create_tool_calling_agent(llm=self.llm, tools=self._tools, prompt=prompt)
+        agent = create_tool_calling_agent(
+            llm=self.llm, tools=self._tools, prompt=prompt)
 
         # Use the standard AgentExecutor
         executor = AgentExecutor(
             agent=agent, tools=self._tools, max_iterations=self.max_steps, verbose=self.verbose
         )
-        logger.debug(f"Created agent executor with max_iterations={self.max_steps}")
+        logger.debug(
+            f"Created agent executor with max_iterations={self.max_steps}")
         return executor
 
     def get_conversation_history(self) -> list[BaseMessage]:
@@ -332,7 +365,8 @@ class MCPAgent:
             initialised_here = True
 
         if not self._agent_executor:
-            raise RuntimeError("MCP agent failed to initialise – call initialise() first?")
+            raise RuntimeError(
+                "MCP agent failed to initialise – call initialise() first?")
 
         # 2. Build inputs --------------------------------------------------------
         effective_max_steps = max_steps or self.max_steps
@@ -388,6 +422,7 @@ class MCPAgent:
         max_steps: int | None = None,
         manage_connector: bool = True,
         external_history: list[BaseMessage] | None = None,
+        access_token: str | None = None,
     ) -> str:
         """Run a query using the MCP tools with unified step-by-step execution.
 
@@ -396,6 +431,7 @@ class MCPAgent:
 
         Args:
             query: The query to run.
+            access_token: Optional access token to inject into tool calls for this run.
             max_steps: Optional maximum number of steps to take.
             manage_connector: Whether to handle the connector lifecycle internally.
                 If True, this method will connect, initialize, and disconnect from
@@ -411,6 +447,10 @@ class MCPAgent:
         initialized_here = False
 
         try:
+            # Set access token if provided for this run
+            if access_token is not None:
+                self.set_access_token(access_token)
+
             # Initialize if needed
             if manage_connector and not self._initialized:
                 await self.initialize()
@@ -482,7 +522,8 @@ class MCPAgent:
                         self._agent_executor = self._create_agent()
                         self._agent_executor.max_iterations = steps
                         # Update maps for this iteration
-                        name_to_tool_map = {tool.name: tool for tool in self._tools}
+                        name_to_tool_map = {
+                            tool.name: tool for tool in self._tools}
                         color_mapping = get_color_mapping(
                             [tool.name for tool in self._tools], excluded_colors=["green", "red"]
                         )
@@ -504,7 +545,8 @@ class MCPAgent:
                     # Process the output
                     if isinstance(next_step_output, AgentFinish):
                         logger.info(f"✅ Agent finished at step {step_num + 1}")
-                        result = next_step_output.return_values.get("output", "No output generated")
+                        result = next_step_output.return_values.get(
+                            "output", "No output generated")
                         break
 
                     # If it's actions/steps, add to intermediate steps
@@ -517,7 +559,8 @@ class MCPAgent:
                         # Truncate long inputs for readability
                         if len(tool_input_str) > 100:
                             tool_input_str = tool_input_str[:97] + "..."
-                        logger.info(f"🔧 Tool call: {tool_name} with input: {tool_input_str}")
+                        logger.info(
+                            f"🔧 Tool call: {tool_name} with input: {tool_input_str}")
                         # Truncate long outputs for readability
                         output_str = str(output)
                         if len(output_str) > 100:
@@ -527,19 +570,25 @@ class MCPAgent:
 
                     # Check for return_direct on the last action taken
                     if len(next_step_output) > 0:
-                        last_step: tuple[AgentAction, str] = next_step_output[-1]
-                        tool_return = self._agent_executor._get_tool_return(last_step)
+                        last_step: tuple[AgentAction,
+                                         str] = next_step_output[-1]
+                        tool_return = self._agent_executor._get_tool_return(
+                            last_step)
                         if tool_return is not None:
-                            logger.info(f"🏆 Tool returned directly at step {step_num + 1}")
-                            result = tool_return.return_values.get("output", "No output generated")
+                            logger.info(
+                                f"🏆 Tool returned directly at step {step_num + 1}")
+                            result = tool_return.return_values.get(
+                                "output", "No output generated")
                             break
 
                 except OutputParserException as e:
-                    logger.error(f"❌ Output parsing error during step {step_num + 1}: {e}")
+                    logger.error(
+                        f"❌ Output parsing error during step {step_num + 1}: {e}")
                     result = f"Agent stopped due to a parsing error: {str(e)}"
                     break
                 except Exception as e:
-                    logger.error(f"❌ Error during agent execution step {step_num + 1}: {e}")
+                    logger.error(
+                        f"❌ Error during agent execution step {step_num + 1}: {e}")
                     import traceback
 
                     traceback.print_exc()
@@ -548,7 +597,8 @@ class MCPAgent:
 
             # --- Loop finished ---
             if not result:
-                logger.warning(f"⚠️ Agent stopped after reaching max iterations ({steps})")
+                logger.warning(
+                    f"⚠️ Agent stopped after reaching max iterations ({steps})")
                 result = f"Agent stopped after reaching the maximum number of steps ({steps})."
 
             # Add the final response to conversation history if memory is enabled
@@ -561,7 +611,8 @@ class MCPAgent:
         except Exception as e:
             logger.error(f"❌ Error running query: {e}")
             if initialized_here and manage_connector:
-                logger.info("🧹 Cleaning up resources after initialization error in run")
+                logger.info(
+                    "🧹 Cleaning up resources after initialization error in run")
                 await self.close()
             raise
 
