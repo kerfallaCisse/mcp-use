@@ -35,7 +35,7 @@
 </p>
 🌐 MCP-Use is the open source way to connect **any LLM to any MCP server** and build custom agents that have tool access, without using closed source or application clients.
 
-💬 Get started quickly - chat with your servers on our `<b>`hosted version`</b>`! `<b>`[Try mcp-use chat _(beta)_ ](https://chat.mcp-use.io)`</b>`.
+💬 Get started quickly - chat with your servers on our `<b>`hosted version `</b>`! `<b>`[Try mcp-use chat _(beta)_ ](https://chat.mcp-use.io)`</b>`.
 
 💡 Let developers easily connect any LLM to tools like web browsing, file operations, and more.
 
@@ -97,7 +97,7 @@ pip install mcp-use
 **Or install from source :**
 
 ```bash
-git clone https://github.com/pietrozullo/mcp-use.git
+git clone git@github.com:AmenityDev/mcp-use.git
 cd mcp-use
 pip install -e . # with pip
 ```
@@ -642,8 +642,8 @@ if __name__ == "__main__":
 
 The `SandboxOptions` type provides configuration for the sandbox environment:
 
-| Option                 | Description                                                                              | Default               |
-| ---------------------- | ---------------------------------------------------------------------------------------- | --------------------- |
+| Option                   | Description                                                                              | Default               |
+| ------------------------ | ---------------------------------------------------------------------------------------- | --------------------- |
 | `api_key`              | E2B API key. Required - can be provided directly or via E2B_API_KEY environment variable | None                  |
 | `sandbox_template_id`  | Template ID for the sandbox environment                                                  | "base"                |
 | `supergateway_command` | Command to run supergateway                                                              | "npx -y supergateway" |
