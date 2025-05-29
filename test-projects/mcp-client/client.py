@@ -24,6 +24,6 @@ class MCPUSE_CLIENT:
             verbose=True,
         )
 
-    async def process_query(self, query: str, access_token) -> str:
+    async def process_query(self, query: str, access_token: str) -> str:
         result = await self.agent.run(query=query, access_token=access_token)
         return result
